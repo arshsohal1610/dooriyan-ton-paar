@@ -16,6 +16,8 @@ import {
   RakhiRecord,
 } from "../../../lib/rakhi";
 
+const RECORD_PREFIX = "doorian-ton-paar:rakhi:";
+
 export default function ReceivePage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -82,14 +84,20 @@ export default function ReceivePage() {
 
     try {
       setError("");
+
       const data = await readPhoto(file);
+
       setPhoto(data);
-    } catch {
-      setError("We couldn't read that photo. Please try another one.");
+    } catch (err) {
+      console.error("Photo error:", err);
+
+      setError(
+        "We couldn't read that photo. Please try another image."
+      );
     }
   };
 
-  const submit = async () => {
+  const submit = () => {
     if (submitting) return;
 
     setError("");
@@ -104,53 +112,71 @@ export default function ReceivePage() {
       return;
     }
 
+    setSubmitting(true);
+
+    const updatedRecord: RakhiRecord = {
+      ...record,
+      brother: {
+        name: name.trim(),
+        location: location.trim(),
+        photo,
+      },
+    };
+
+    /*
+     * STEP 1
+     * Save immediately on this device.
+     *
+     * The journey page can therefore open without waiting
+     * for MongoDB or the internet.
+     */
     try {
-      setSubmitting(true);
-
-      const updatedRecord: RakhiRecord = {
-        ...record,
-        brother: {
-          name: name.trim(),
-          location: location.trim(),
-          photo,
-        },
-      };
-
-      /*
-       * Save the brother's details locally first.
-       * This makes the journey page available immediately.
-       */
       localStorage.setItem(
-        `doorian-ton-paar:rakhi:${id}`,
+        `${RECORD_PREFIX}${id}`,
         JSON.stringify(updatedRecord)
       );
 
       setActiveRakhi(id);
+    } catch (localError) {
+      console.error("Local save failed:", localError);
 
-      /*
-       * Also save the updated Rakhi online.
-       */
-      try {
-        await fetch(`/api/rakhi/${id}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedRecord),
-        });
-      } catch (onlineError) {
-        console.error("Online save failed:", onlineError);
-      }
+      setError(
+        "We couldn't save your Rakhi on this device. Please try again."
+      );
 
-      /*
-       * Now move to the journey.
-       */
-      router.push("/rakhi/journey");
-    } catch (err) {
-      console.error("Could not start journey:", err);
-      setError("Something went wrong. Please try again.");
       setSubmitting(false);
+      return;
     }
+
+    /*
+     * STEP 2
+     * Send the updated Rakhi to MongoDB in the background.
+     *
+     * IMPORTANT:
+     * We intentionally DO NOT await this request.
+     *
+     * This means the brother does not have to wait for the
+     * database/network before seeing the next page.
+     */
+    fetch(`/api/rakhi/${id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updatedRecord),
+      keepalive: true,
+    }).catch((onlineError) => {
+      console.error(
+        "Background online Rakhi save failed:",
+        onlineError
+      );
+    });
+
+    /*
+     * STEP 3
+     * Go to the journey immediately.
+     */
+    router.push("/rakhi/journey");
   };
 
   if (loading) {
@@ -180,8 +206,8 @@ export default function ReceivePage() {
           </h1>
 
           <p className="mt-4 text-sm leading-6 text-[#756C78]">
-            We couldn't find this Rakhi. Please make sure you opened the
-            complete link that was shared with you.
+            We couldn't find this Rakhi. Please make sure you opened
+            the complete link that was shared with you.
           </p>
 
           <RakhiButton
@@ -216,8 +242,8 @@ export default function ReceivePage() {
           </h1>
 
           <p className="mt-5 text-sm leading-7 text-[#756C78]">
-            A Rakhi is travelling across the distance, carrying a little
-            love especially for you.
+            A Rakhi is travelling across the distance, carrying a
+            little love especially for you.
           </p>
         </header>
 

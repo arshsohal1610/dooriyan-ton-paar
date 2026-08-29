@@ -30,7 +30,6 @@ export async function saveRakhi(record: RakhiRecord) {
 
   sessionStorage.setItem(ACTIVE_RAKHI_KEY, record.id);
 
-  // IMPORTANT:
   // Wait for MongoDB to save before continuing.
   const response = await fetch(`/api/rakhi/${record.id}`, {
     method: "POST",
@@ -100,14 +99,76 @@ export function getActiveRecord() {
   return id ? getRakhi(id) : null;
 }
 
+/**
+ * Reads a photo from the user's phone and automatically
+ * resizes/compresses it before storing it.
+ *
+ * This allows large iPhone/Android camera photos to work
+ * without putting huge Base64 images into storage/database.
+ */
 export function readPhoto(file: File) {
   return new Promise<string>((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("Please select an image file."));
+      return;
+    }
+
     const reader = new FileReader();
 
-    reader.onload = () => resolve(String(reader.result));
+    reader.onload = () => {
+      const image = new Image();
 
-    reader.onerror = () =>
+      image.onload = () => {
+        const MAX_SIZE = 1200;
+
+        let width = image.width;
+        let height = image.height;
+
+        // Resize large photos while preserving their aspect ratio.
+        if (width > MAX_SIZE || height > MAX_SIZE) {
+          if (width > height) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          } else {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext("2d");
+
+        if (!context) {
+          reject(new Error("Could not process the photo."));
+          return;
+        }
+
+        context.drawImage(image, 0, 0, width, height);
+
+        // JPEG compression keeps the image much smaller
+        // while maintaining good visual quality.
+        const compressedPhoto = canvas.toDataURL(
+          "image/jpeg",
+          0.75
+        );
+
+        resolve(compressedPhoto);
+      };
+
+      image.onerror = () => {
+        reject(new Error("We couldn't process that photo."));
+      };
+
+      image.src = String(reader.result);
+    };
+
+    reader.onerror = () => {
       reject(new Error("We couldn't read that photo."));
+    };
 
     reader.readAsDataURL(file);
   });
