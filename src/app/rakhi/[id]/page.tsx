@@ -10,7 +10,6 @@ import RakhiButton from "../../../components/RakhiButton";
 
 import {
   getRakhi,
-  getRakhiOnline,
   readPhoto,
   saveRakhi,
   setActiveRakhi,
@@ -18,10 +17,11 @@ import {
 } from "../../../lib/rakhi";
 
 export default function ReceivePage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const id = params.id;
   const router = useRouter();
 
-  const [exists, setExists] = useState<boolean>();
+  const [loading, setLoading] = useState(true);
   const [record, setRecord] = useState<RakhiRecord | null>(null);
 
   const [name, setName] = useState("");
@@ -30,75 +30,192 @@ export default function ReceivePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!id) return;
+
+    let cancelled = false;
+
     const loadRakhi = async () => {
-      // First check this device
-      const localRecord = getRakhi(id);
+      try {
+        /*
+         * First try MongoDB.
+         * This is the important part for the brother's device.
+         */
+        const response = await fetch(`/api/rakhi/${id}`, {
+          method: "GET",
+          cache: "no-store",
+        });
 
-      if (localRecord) {
-        setRecord(localRecord);
-        setExists(true);
-        setActiveRakhi(id);
-        return;
+        if (response.ok) {
+          const onlineRecord = (await response.json()) as RakhiRecord;
+
+          if (!cancelled) {
+            setRecord(onlineRecord);
+            setActiveRakhi(id);
+
+            // Keep a local copy for the rest of the journey.
+            localStorage.setItem(
+              `doorian-ton-paar:rakhi:${id}`,
+              JSON.stringify(onlineRecord)
+            );
+
+            setLoading(false);
+          }
+
+          return;
+        }
+
+        /*
+         * If MongoDB cannot be reached, try local storage.
+         * This keeps the local development flow working.
+         */
+        const localRecord = getRakhi(id);
+
+        if (!cancelled) {
+          if (localRecord) {
+            setRecord(localRecord);
+            setActiveRakhi(id);
+          } else {
+            setRecord(null);
+          }
+
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Failed to load Rakhi:", err);
+
+        /*
+         * Final fallback to local storage.
+         */
+        const localRecord = getRakhi(id);
+
+        if (!cancelled) {
+          if (localRecord) {
+            setRecord(localRecord);
+            setActiveRakhi(id);
+          } else {
+            setRecord(null);
+          }
+
+          setLoading(false);
+        }
       }
-
-      // If this is another device, load the Rakhi from MongoDB
-      const onlineRecord = await getRakhiOnline(id);
-
-      if (onlineRecord) {
-        setRecord(onlineRecord);
-        setExists(true);
-        setActiveRakhi(id);
-        return;
-      }
-
-      setExists(false);
     };
 
     loadRakhi();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const choose = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
-    if (file) {
-      setPhoto(await readPhoto(file));
+    if (!file) return;
+
+    try {
+      const result = await readPhoto(file);
+      setPhoto(result);
+      setError("");
+    } catch {
+      setError("We couldn't read that photo. Please try another one.");
     }
   };
 
-  const submit = () => {
+  const submit = async () => {
+    setError("");
+
     if (!name.trim() || !location.trim() || !photo) {
       setError("Please add your name, location, and photo.");
       return;
     }
 
     if (!record) {
-      setError("We couldn't find this Rakhi. Please reopen the link.");
+      setError(
+        "We couldn't find this Rakhi. Please reopen the complete link."
+      );
       return;
     }
 
     const updatedRecord: RakhiRecord = {
       ...record,
       brother: {
-        name,
-        location,
+        name: name.trim(),
+        location: location.trim(),
         photo,
       },
     };
 
-    // Save locally and online
+    /*
+     * Save locally immediately.
+     */
     saveRakhi(updatedRecord);
 
-    // Continue to the journey
+    /*
+     * Also explicitly save the brother's details online.
+     * Wait for this before moving to the journey.
+     */
+    try {
+      const response = await fetch(`/api/rakhi/${id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedRecord),
+      });
+
+      if (!response.ok) {
+        console.error(
+          "Failed to save brother details:",
+          await response.text()
+        );
+      }
+    } catch (err) {
+      console.error("Could not save brother details online:", err);
+    }
+
+    setActiveRakhi(id);
+
+    /*
+     * Brother now enters the Rakhi journey.
+     */
     router.push("/rakhi/journey");
   };
 
-  // Loading
-  if (exists === undefined) {
-    return null;
+  if (loading) {
+    return (
+      <main className="relative min-h-screen bg-[#FFFDF8] text-[#40364A]">
+        <GlitterBackground />
+
+        <section className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
+          <Heart
+            className="text-[#8068A8]"
+            fill="currentColor"
+          />
+
+          <p className="mt-6 text-[10px] uppercase tracking-[.3em] text-[#8068A8]">
+            A Rakhi is travelling
+          </p>
+
+          <h1 className="mt-3 font-serif text-4xl">
+            Your Rakhi is arriving...
+          </h1>
+
+          <p className="mt-4 text-sm leading-6 text-[#756C78]">
+            Please wait while we bring your Rakhi to you.
+          </p>
+        </section>
+      </main>
+    );
   }
 
-  // Rakhi could not be found
-  if (!exists) {
+  /*
+   * Only show this when the shared ID genuinely cannot be found.
+   *
+   * IMPORTANT:
+   * We do NOT send the brother to the home/create page here.
+   */
+  if (!record) {
     return (
       <main className="relative min-h-screen bg-[#FFFDF8] text-[#40364A]">
         <GlitterBackground />
@@ -107,26 +224,18 @@ export default function ReceivePage() {
           <Heart className="text-[#8068A8]" />
 
           <h1 className="mt-6 font-serif text-4xl">
-            This Rakhi is waiting to travel.
+            This Rakhi link has expired.
           </h1>
 
           <p className="mt-4 text-sm leading-6 text-[#756C78]">
-            We could not find this Rakhi. Please make sure you opened the
-            complete link that was shared with you.
+            We couldn't find the Rakhi connected to this link.
+            Please ask your sister to send you the Rakhi link again.
           </p>
-
-          <RakhiButton
-            onClick={() => router.push("/")}
-            className="mt-8"
-          >
-            GO HOME
-          </RakhiButton>
         </section>
       </main>
     );
   }
 
-  // Brother's receiving page
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#FFFDF8] text-[#40364A]">
       <GlitterBackground />
@@ -148,8 +257,8 @@ export default function ReceivePage() {
           </h1>
 
           <p className="mt-5 text-sm leading-7 text-[#756C78]">
-            A Rakhi is travelling across the distance, carrying a little
-            love especially for you.
+            A Rakhi is travelling across the distance, carrying a
+            little love especially for you.
           </p>
         </header>
 
