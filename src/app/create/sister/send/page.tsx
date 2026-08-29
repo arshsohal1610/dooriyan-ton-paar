@@ -24,17 +24,21 @@ export default function SendPage() {
 
   const [link, setLink] = useState("");
   const [copied, setCopied] = useState(false);
+  const [creating, setCreating] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const createAndSaveRakhi = async () => {
-      const draft = sessionStorage.getItem("doorian-ton-paar:draft");
-
-      if (!draft) {
-        router.replace("/create/sister");
-        return;
-      }
-
+    const createLink = async () => {
       try {
+        const draft = sessionStorage.getItem(
+          "doorian-ton-paar:draft"
+        );
+
+        if (!draft) {
+          router.replace("/create/sister");
+          return;
+        }
+
         const sister = JSON.parse(draft);
 
         const record: RakhiRecord = {
@@ -43,40 +47,50 @@ export default function SendPage() {
           createdAt: new Date().toISOString(),
         };
 
-        // Save locally AND wait for MongoDB to save it online.
-        await saveRakhi(record);
+        // Save the Rakhi.
+        saveRakhi(record);
 
-        // Only show the link after the online save completes.
-        setLink(`${window.location.origin}/rakhi/${record.id}`);
-      } catch (error) {
-        console.error("Could not create Rakhi:", error);
+        // Create the shareable link immediately.
+        const shareLink = `${window.location.origin}/rakhi/${record.id}`;
+
+        setLink(shareLink);
+        setCreating(false);
+      } catch (err) {
+        console.error("Could not create Rakhi link:", err);
+        setError("We couldn't create your Rakhi link. Please try again.");
+        setCreating(false);
       }
     };
 
-    createAndSaveRakhi();
+    createLink();
   }, [router]);
 
   const copy = async () => {
     if (!link) return;
 
-    await navigator.clipboard.writeText(link);
+    try {
+      await navigator.clipboard.writeText(link);
 
-    setCopied(true);
+      setCopied(true);
 
-    setTimeout(() => {
-      setCopied(false);
-    }, 1800);
+      setTimeout(() => {
+        setCopied(false);
+      }, 1800);
+    } catch (error) {
+      console.error("Could not copy link:", error);
+    }
   };
 
   const whatsapp = () => {
     if (!link) return;
 
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(
-        `I made something special for you this Rakhi. ❤️ Open this when you have a moment.\n${link}`
-      )}`,
-      "_blank"
-    );
+    const message = `I made something special for you this Rakhi. ❤️ Open this when you have a moment.\n\n${link}`;
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
+      message
+    )}`;
+
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -120,9 +134,12 @@ export default function SendPage() {
           <div className="flex gap-2 rounded-2xl border border-[#D9B77A]/30 p-2">
 
             <input
-              value={link}
+              value={
+                creating
+                  ? "Creating your Rakhi link..."
+                  : link
+              }
               readOnly
-              placeholder="Creating your Rakhi link..."
               className="min-w-0 flex-1 bg-transparent px-2 text-xs outline-none"
             />
 
@@ -130,7 +147,7 @@ export default function SendPage() {
               onClick={copy}
               disabled={!link}
               aria-label="Copy link"
-              className="rounded-xl bg-[#F2C1A8]/30 p-3 text-[#8068A8] disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-xl bg-[#F2C1A8]/30 p-3 text-[#8068A8] disabled:opacity-40"
             >
               {copied ? (
                 <Check size={16} />
@@ -141,12 +158,19 @@ export default function SendPage() {
 
           </div>
 
+          {error && (
+            <p className="mt-3 text-center text-sm text-[#a85f76]">
+              {error}
+            </p>
+          )}
+
         </article>
 
         <RakhiButton
           onClick={whatsapp}
           className="mt-6"
           icon={false}
+          disabled={!link}
         >
           <MessageCircle size={18} />
           SEND ON WHATSAPP
@@ -157,12 +181,14 @@ export default function SendPage() {
           secondary
           className="mt-3"
           icon={false}
+          disabled={!link}
         >
           {copied ? "LINK COPIED" : "COPY LINK"}
         </RakhiButton>
 
         <p className="mt-7 text-[9px] uppercase tracking-[.2em] text-[#AAA2AC]">
-          <Sparkles className="inline" size={11} /> Made with love, from sister to brother
+          <Sparkles className="inline" size={11} /> Made with love,
+          from sister to brother
         </p>
 
       </section>
