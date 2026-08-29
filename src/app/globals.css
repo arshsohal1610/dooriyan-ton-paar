@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fffdf8;
+  --foreground: #40364a;
+
+  --lavender: #b9a7d9;
+  --purple: #8068a8;
+  --blush: #e8b6b8;
+  --peach: #f2c1a8;
+  --champagne: #d9b77a;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid rgba(217, 183, 122, 0.3);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 1rem 1.25rem;
+  outline: none;
+  font-size: 0.875rem;
+}
+
+.field:focus {
+  border-color: rgba(128, 104, 168, 0.6);
+  box-shadow: 0 0 0 3px rgba(128, 104, 168, 0.1);
+}
+
+::selection {
+  background: #e8b6b8;
+  color: #40364a;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fffdf8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d9cce8;
+  border-radius: 999px;
+}
+
+.sparkle {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: white;
+  box-shadow:
+    0 0 5px rgba(255, 255, 255, 0.9),
+    0 0 12px rgba(217, 183, 122, 0.35);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(217, 183, 122, 0.25);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
