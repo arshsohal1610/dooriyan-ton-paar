@@ -21,8 +21,8 @@ export function createRakhiId() {
   );
 }
 
-export function saveRakhi(record: RakhiRecord) {
-  // Keep local storage so the existing app continues to work.
+export async function saveRakhi(record: RakhiRecord) {
+  // Keep a local copy too.
   localStorage.setItem(
     `${RECORD_PREFIX}${record.id}`,
     JSON.stringify(record)
@@ -30,16 +30,21 @@ export function saveRakhi(record: RakhiRecord) {
 
   sessionStorage.setItem(ACTIVE_RAKHI_KEY, record.id);
 
-  // Also save the Rakhi online so another device can open it.
-  fetch(`/api/rakhi/${record.id}`, {
+  // IMPORTANT:
+  // Wait for MongoDB to save before continuing.
+  const response = await fetch(`/api/rakhi/${record.id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(record),
-  }).catch((error) => {
-    console.error("Could not save Rakhi online:", error);
   });
+
+  if (!response.ok) {
+    throw new Error("Could not save Rakhi online.");
+  }
+
+  return record;
 }
 
 export function getRakhi(id: string): RakhiRecord | null {
@@ -62,11 +67,12 @@ export async function getRakhiOnline(
       cache: "no-store",
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return null;
+    }
 
     const record = (await response.json()) as RakhiRecord;
 
-    // Store the online record locally too.
     localStorage.setItem(
       `${RECORD_PREFIX}${id}`,
       JSON.stringify(record)
