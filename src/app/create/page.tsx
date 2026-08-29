@@ -20,6 +20,9 @@ export default function CreatePage() {
       <GlitterBackground />
 
       <section className="relative z-10 flex min-h-screen flex-col px-6 py-8">
+
+        {/* BACK BUTTON */}
+
         <button
           onClick={() => router.back()}
           className="flex w-fit items-center gap-2 text-sm text-[#8068A8]"
@@ -28,101 +31,119 @@ export default function CreatePage() {
           Back
         </button>
 
+        {/* MAIN CONTENT */}
+
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center text-center">
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
+
+            {/* HEART */}
+
             <Heart
               className="mx-auto mb-6 text-[#D9B77A]"
-              size={28}
+              size={30}
               strokeWidth={1.4}
             />
 
+            {/* SMALL HEADING */}
+
             <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.3em] text-[#8068A8]">
               <Sparkles size={12} />
-              Begin your journey
+
+              For the sister
+
               <Sparkles size={12} />
             </div>
 
-            <h1 className="mt-4 font-serif text-4xl leading-tight">
-              Who are you
+            {/* MAIN HEADING */}
 
+            <h1 className="mt-5 font-serif text-4xl leading-tight">
+              Some bonds
               <span className="block italic text-[#8068A8]">
-                today?
+                know no distance.
               </span>
             </h1>
 
-            <p className="mx-auto mt-5 max-w-[290px] text-sm leading-7 text-[#756C78]">
-              Because love deserves to travel both ways.
+            {/* DESCRIPTION */}
+
+            <p className="mx-auto mt-6 max-w-[310px] text-sm leading-7 text-[#756C78]">
+              Even when you cannot tie a Rakhi yourself,
+              love can still find its way across every mile.
             </p>
+
+            {/* SMALL DECORATION */}
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="mx-auto mt-8 flex items-center justify-center gap-3"
+            >
+              <span className="h-px w-10 bg-[#D9B77A]/50" />
+
+              <span className="text-xl text-[#D9B77A]">
+                🪢
+              </span>
+
+              <span className="h-px w-10 bg-[#D9B77A]/50" />
+            </motion.div>
+
           </motion.div>
 
-          <div className="mt-10 space-y-4">
-            <RoleCard
-              symbol="♡"
-              title="Sister"
-              subtitle="I want to send a Rakhi"
-              onClick={() => router.push("/create/sister")}
-              delay={0.2}
-            />
+          {/* CONTINUE CARD */}
 
-            <RoleCard
-              symbol="♡"
-              title="Brother"
-              subtitle="I want to send a Rakhi"
-              onClick={() => router.push("/create/brother")}
-              delay={0.35}
-            />
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="mt-10"
+          >
+
+            <div className="glass rounded-[30px] p-6 shadow-[0_15px_50px_rgba(128,104,168,0.08)]">
+
+              <p className="font-serif text-xl">
+                Send a little piece of home.
+              </p>
+
+              <p className="mt-2 text-xs leading-6 text-[#756C78]">
+                Tell us about yourself and the person
+                waiting for your Rakhi.
+              </p>
+
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => router.push("/create/sister")}
+                className="mt-6 flex w-full items-center justify-center gap-3 rounded-full bg-[#8068A8] px-7 py-4 text-sm font-medium tracking-[0.12em] text-white shadow-[0_12px_35px_rgba(128,104,168,0.22)] transition hover:shadow-[0_15px_40px_rgba(128,104,168,0.3)]"
+              >
+                CONTINUE
+
+                <ArrowRight size={17} />
+              </motion.button>
+
+            </div>
+
+          </motion.div>
+
+          {/* FOOTER */}
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="mt-8 flex items-center justify-center gap-2 text-[9px] uppercase tracking-[0.2em] text-[#AAA2AC]"
+          >
+            <Sparkles size={11} />
+
+            Made with love, across every distance
+
+            <Sparkles size={11} />
+          </motion.div>
+
         </div>
       </section>
     </main>
-  );
-}
-
-function RoleCard({
-  symbol,
-  title,
-  subtitle,
-  onClick,
-  delay,
-}: {
-  symbol: string;
-  title: string;
-  subtitle: string;
-  onClick: () => void;
-  delay: number;
-}) {
-  return (
-    <motion.button
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      className="glass group w-full rounded-[28px] p-6 text-left shadow-[0_15px_50px_rgba(128,104,168,0.08)] transition hover:-translate-y-1"
-    >
-      <div className="flex items-center gap-5">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#F2C1A8]/30 font-serif text-2xl text-[#8068A8]">
-          {symbol}
-        </div>
-
-        <div className="flex-1">
-          <h2 className="font-serif text-2xl">
-            {title}
-          </h2>
-
-          <p className="mt-1 text-sm text-[#756C78]">
-            {subtitle}
-          </p>
-        </div>
-
-        <ArrowRight
-          size={18}
-          className="text-[#D9B77A] transition-transform duration-300 group-hover:translate-x-1"
-        />
-      </div>
-    </motion.button>
   );
 }
